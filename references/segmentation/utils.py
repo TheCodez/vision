@@ -207,6 +207,8 @@ class MetricLogger(object):
 		#print('{} Total time: {}'.format(header, total_time_str))
 		tqdm.write('{} Total time: {}'.format(header, total_time_str))
 
+		self.pbar.close()
+
 def cat_list(images, fill_value=0):
 	max_size = tuple(max(s) for s in zip(*[img.shape for img in images]))
 	batch_shape = (len(images),) + max_size
