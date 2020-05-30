@@ -229,5 +229,8 @@ def parse_args():
 
 
 if __name__ == "__main__":
+    import warnings
+    warnings.filterwarnings("ignore", message="The given NumPy array is not writeable, and PyTorch does not support non-writeable tensors.")
+
     args = parse_args()
     main(args)
