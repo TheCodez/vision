@@ -45,7 +45,7 @@ def get_transform(train):
     return T.Compose(transforms)
 
 
-def evaluate(model, data_loader, device, num_classes):
+def evaluate(model, data_loader, device, num_classes, print_freq):
     model.eval()
     confmat = utils.ConfusionMatrix(num_classes)
     metric_logger = utils.MetricLogger(delimiter="  ")
@@ -76,8 +76,6 @@ def train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, devi
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
-        lr_scheduler.step()
 
         metric_logger.update(loss=loss.item(), lr=optimizer.param_groups[0]["lr"])
 
@@ -144,8 +142,11 @@ def main(args):
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
+
         train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, device, epoch, args.epochs, args.print_freq)
-        confmat = evaluate(model, data_loader_test, device=device, num_classes=num_classes)
+        lr_scheduler.step()
+
+        confmat = evaluate(model, data_loader_test, device=device, num_classes=num_classes, print_freq=args.print_freq)
         print(confmat)
         utils.save_on_master(
             {
