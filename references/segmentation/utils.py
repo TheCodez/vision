@@ -166,9 +166,6 @@ class MetricLogger(object):
         self.pbar.set_description(header)
 
         start_time = time.time()
-        end = time.time()
-        iter_time = SmoothedValue(fmt='{avg:.4f}')
-        data_time = SmoothedValue(fmt='{avg:.4f}')
         space_fmt = ':' + str(len(str(len(iterable)))) + 'd'
         if torch.cuda.is_available():
             log_msg = self.delimiter.join([
@@ -191,20 +188,14 @@ class MetricLogger(object):
             ])
         MB = 1024.0 * 1024.0
         for obj in iterable:
-            data_time.update(time.time() - end)
             yield obj
-            iter_time.update(time.time() - end)
-            eta_seconds = iter_time.global_avg * (len(iterable) - i)
-            eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
 
             metrics = {name: '{}'.format(str(meter)) for name, meter in self.meters.items()}
             self.pbar.set_postfix(**metrics)
             self.pbar.update()
-            i += 1
-            end = time.time()
-        total_time = time.time() - start_time
+
+            total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-        #print('{} Total time: {}'.format(header, total_time_str))
         tqdm.write('{} Total time: {}'.format(header, total_time_str))
 
         self.pbar.close()
