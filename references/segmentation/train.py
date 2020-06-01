@@ -45,13 +45,13 @@ def get_transform(train):
     return T.Compose(transforms)
 
 
-def evaluate(model, data_loader, device, num_classes, print_freq):
+def evaluate(model, data_loader, device, num_classes):
     model.eval()
     confmat = utils.ConfusionMatrix(num_classes)
-    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger = utils.MetricLogger()
     header = 'Evaluate'
     with torch.no_grad():
-        for image, target in metric_logger.log_every(data_loader, print_freq, header):
+        for image, target in metric_logger.log(data_loader, header):
             image, target = image.to(device), target.to(device)
             output = model(image)
 
@@ -62,12 +62,12 @@ def evaluate(model, data_loader, device, num_classes, print_freq):
     return confmat
 
 
-def train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, device, epoch, max_epochs, print_freq):
+def train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, device, epoch, max_epochs):
     model.train()
-    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger = utils.MetricLogger()
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value}'))
     header = 'Epoch: [{}/{}]'.format(epoch, max_epochs)
-    for image, target in metric_logger.log_every(data_loader, print_freq, header):
+    for image, target in metric_logger.log(data_loader, header):
         image, target = image.to(device), target.to(device)
         output = model(image)
         loss = criterion(output, target)
@@ -142,10 +142,10 @@ def main(args):
         if args.distributed:
             train_sampler.set_epoch(epoch)
 
-        train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, device, epoch, args.epochs, args.print_freq)
+        train_one_epoch(model, criterion, optimizer, data_loader, lr_scheduler, device, epoch, args.epochs)
         lr_scheduler.step()
 
-        confmat = evaluate(model, data_loader_test, device=device, num_classes=num_classes, print_freq=args.print_freq)
+        confmat = evaluate(model, data_loader_test, device=device, num_classes=num_classes)
         print(confmat)
         utils.save_on_master(
             {
@@ -167,40 +167,27 @@ def parse_args():
     parser = argparse.ArgumentParser(description='PyTorch Segmentation Training')
 
     parser.add_argument('--dataset', default='voc', help='dataset')
-    parser.add_argument('--model', default='fcn_resnet101', help='model')
     parser.add_argument('--device', default='cuda', help='device')
     parser.add_argument('--batch-size', default=8, type=int)
     parser.add_argument('--epochs', default=30, type=int, metavar='N',
                         help='number of total epochs to run')
     
-    parser.add_argument('--lr-step-size', default=1, type=int, help='decrease lr every step-size epochs')
+    parser.add_argument('--lr', default=0.01, type=float, help='initial learning rate')
+    parser.add_argument('--momentum', default=0.9, type=float, metavar='M', help='momentum')
+    parser.add_argument('--weight-decay', default=1e-4, type=float, metavar='W', help='weight decay (default: 1e-4)')    
+
+                        parser.add_argument('--lr-step-size', default=1, type=int, help='decrease lr every step-size epochs')
     parser.add_argument('--lr-gamma', default=0.98, type=float, help='decrease lr by a factor of lr-gamma')
     
     parser.add_argument('-j', '--workers', default=16, type=int, metavar='N',
                         help='number of data loading workers (default: 16)')
-    parser.add_argument('--lr', default=0.01, type=float, help='initial learning rate')
-    parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
-                        help='momentum')
-    parser.add_argument('--weight-decay', default=1e-4, type=float,
-                        metavar='W', help='weight decay (default: 1e-4)',
-                        dest='weight_decay')    
-    parser.add_argument('--print-freq', default=1, type=int, help='print frequency')
     parser.add_argument('--output-dir', default='.', help='path where to save')
     parser.add_argument('--resume', default='', help='resume from checkpoint')
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                         help='start epoch')
-    parser.add_argument(
-        "--test-only",
-        dest="test_only",
-        help="Only test the model",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--pretrained",
-        dest="pretrained",
-        help="Use pre-trained models from the modelzoo",
-        action="store_true",
-    )
+    parser.add_argument("--test-only", help="Only test the model", action="store_true")
+    parser.add_argument("--pretrained", help="Use pre-trained models from the modelzoo", action="store_true")
+
     # distributed training parameters
     parser.add_argument('--world-size', default=1, type=int,
                         help='number of distributed processes')

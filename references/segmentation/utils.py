@@ -109,19 +109,16 @@ class ConfusionMatrix(object):
         acc_global, acc, iu = self.compute()
         return (
             'global correct: {:.1f}\n'
-            'average row correct: {}\n'
             'IoU: {}\n'
             'mean IoU: {:.1f}').format(
                 acc_global.item() * 100,
-                ['{:.1f}'.format(i) for i in (acc * 100).tolist()],
                 ['{:.1f}'.format(i) for i in (iu * 100).tolist()],
                 iu.mean().item() * 100)
 
 
 class MetricLogger(object):
-    def __init__(self, delimiter="\t"):
+    def __init__(self):
         self.meters = defaultdict(SmoothedValue)
-        self.delimiter = delimiter
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
@@ -153,40 +150,15 @@ class MetricLogger(object):
     def add_meter(self, name, meter):
         self.meters[name] = meter
 
-    def log_every(self, iterable, print_freq, header=None):
-        i = 0
+    def log(self, iterable, header=None):
         if not header:
             header = ''
 
-        self.pbar = tqdm(
-            total=len(iterable),
-            leave=True,
-            bar_format='{desc}[{n_fmt}/{total_fmt}] {percentage:3.0f}%|{bar}{postfix} [{elapsed}<{remaining}]')
-
+        self.pbar = tqdm(total=len(iterable), leave=True, 
+                         bar_format='{desc}[{n_fmt}/{total_fmt}] {percentage:3.0f}%|{bar}{postfix} [{elapsed}<{remaining}]')
         self.pbar.set_description(header)
 
         start_time = time.time()
-        space_fmt = ':' + str(len(str(len(iterable)))) + 'd'
-        if torch.cuda.is_available():
-            log_msg = self.delimiter.join([
-                header,
-                '[{0' + space_fmt + '}/{1}]',
-                'eta: {eta}',
-                '{meters}',
-                'time: {time}',
-                'data: {data}',
-                'max mem: {memory:.0f}'
-            ])
-        else:
-            log_msg = self.delimiter.join([
-                header,
-                '[{0' + space_fmt + '}/{1}]',
-                'eta: {eta}',
-                '{meters}',
-                'time: {time}',
-                'data: {data}'
-            ])
-        MB = 1024.0 * 1024.0
         for obj in iterable:
             yield obj
 
@@ -194,7 +166,7 @@ class MetricLogger(object):
             self.pbar.set_postfix(**metrics)
             self.pbar.update()
 
-            total_time = time.time() - start_time
+        total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
         tqdm.write('{} Total time: {}'.format(header, total_time_str))
 
